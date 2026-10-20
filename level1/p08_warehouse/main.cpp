@@ -155,7 +155,8 @@ int main() {
         unsigned int choice;
         if (!readUInt("请选择: ", choice)) break;   
 
-        if (choice == 1) {                          
+        if (choice == 1) {
+            system("cls");                          
             Screen.showItems(Warehouse);
         }
         else if (choice == 2) {                     
@@ -171,11 +172,20 @@ int main() {
             if (!readLine("货品名称: ", name)) break;
             if (!readUInt("出库数量: ", num)) break;
             int r = Warehouse.stock_out_(name, num);
-            if (r == 0)      cout << "  -> 出库成功，已保存\n";
-            else if (r == 1) cout << "  ! No matching entries found（无此货品）\n";
-            else             cout << "  ! The quantity to be shipped is greater than the current stock!（库存不足）\n";
+            if (r == 0){
+                cout << "  -> 出库成功，已保存\n";
+                system("cls");
+            }      
+            else if (r == 1) {
+                cout << "  ! No matching entries found（无此货品）\n";
+                system("cls");
+            }else{
+                cout << "  ! The quantity to be shipped is greater than the current stock!（库存不足）\n";
+                system("cls");
+            }             
         }
-        else if (choice == 4) {                     
+        else if (choice == 4) {
+            system("cls");                     
             Screen.showItems(Warehouse);
             unsigned int i;
             if (!readUInt("要修改的编号: ", i)) break;
@@ -185,7 +195,8 @@ int main() {
             if (Warehouse.revise_(i, name, num)) cout << "  -> 修改成功\n";
             else cout << "  ! index out of range（编号越界）\n";
         }
-        else if (choice == 5) {                     
+        else if (choice == 5) {
+            system("cls");                     
             Screen.showItems(Warehouse);
             unsigned int i;
             if (!readUInt("要删除的编号: ", i)) break;
