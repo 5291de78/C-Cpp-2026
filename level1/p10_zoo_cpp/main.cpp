@@ -84,10 +84,19 @@ class zoo{
        | |
       ~~~~~
 )" ; 
-        inline static vector<string> pic = {sheep , dog , cow , chick , cat ,bird};
-        inline static vector<string> names ={"sheep" , "dog" , "cow" , "chick","cat" };
+        inline static string wolf = R"(
+              .-"""-.
+             /  O  O  \
+            |    ^     |
+             \   o    /
+              '-...-'
+               (   )
+               (___)
+)" ; 
+        inline static vector<string> pic = {sheep , dog , cow , cat , chick , bird , wolf};
+        inline static vector<string> names ={"sheep" , "dog" , "cow" , "cat", "chick", "bird", "wolf" };
         string name = names.at(i);
-        inline static vector<string> paths = {"bark/sheep.mp3","bark/dog.wav","bark/cow.mp3","bark/chicken.wav","bark/cat.mp3"};
+        inline static vector<string> paths = {"bark/sheep.mp3","bark/dog.wav","bark/cow.mp3","bark/cat.mp3","bark/chicken.wav","bark/bird.mp3","bark/wolf.mp3"};
 
     public:
         zoo(int i_ ) : i(i_) {}
@@ -179,7 +188,9 @@ int main(){
     zoo cow(2);
     zoo cat(3);
     zoo chicken(4);
-    vector<zoo> Zoo ={sheep , dog , cow , cat , chicken};
+    zoo bird(5);
+    zoo wolf(6);       // 新品种狗：狼狗（叫声文件 bark/wolf.mp3，若缺失则播放时静默报错）
+    vector<zoo> Zoo ={sheep , dog , cow , cat , chicken , bird , wolf};
     cout << string(25 , '=')<<'\n'; 
     cout<<"what a nice day,let's visit the zoo!\n";
     cout<<"press A and D to visit\n";
@@ -221,65 +232,3 @@ int main(){
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-老师您好，这份 C++ 大作业，耗费了我整整一个月的精力。我日夜敲写代码，反复攻克链接报错、排查逻辑漏洞，几乎把所有课余时间都投入其中，已经一个月没有玩游戏了。一路上踩遍各类难题，不断查阅资料、逐行调试，用心打磨每一处功能。这份作业凝聚了我大量心血，恳请老师酌情给予 100 分。我也会带着这份热忱继续深耕 C++，坚持钻研*/

@@ -3,126 +3,37 @@
 #include <vector>
 using namespace std;
 
-//https://blog.csdn.net/weixin_43469047/article/details/88365179
-///@brief  打印2-1000以内的所有素数,打印出总的计算时间
+// 功能：打印 2~1000 以内的所有素数，并输出总计算时间。
+// 算法：欧拉（线性）筛，每个合数只被它的最小质因子筛掉一次，时间复杂度 O(n)。
+
 const int n = 1000;
-vector<bool> is_prime(n+1 , true);
-vector<int> primes;
+vector<bool> is_prime(n + 1, true);   // true 表示当前仍认为是素数
+vector<int> primes;                    // 收集已找到的素数
 
+int main() {
+    auto start = chrono::high_resolution_clock::now();   // 开始计时（只统计计算部分）
 
+    is_prime[0] = false;   // 0 不是素数
+    is_prime[1] = false;   // 1 不是素数
 
-int main(){
-    auto start = chrono::high_resolution_clock::now();
-    is_prime[0] = false;
-    is_prime[1] = false;
-    for(int i = 2; i <= n; i++){
-        if (is_prime[i])primes.push_back(i);
+    for (int i = 2; i <= n; i++) {
+        if (is_prime[i]) primes.push_back(i);   // i 是素数，收集
 
-        for (int p : primes){
-            if(i*p > n)break;
-            is_prime[i*p] = false;
-            if (i % p == 0) break;
+        // 用已找到的素数去筛合数，保证每个合数只被最小质因子筛掉一次
+        for (int p : primes) {
+            if (i * p > n) break;       // 超出范围
+            is_prime[i * p] = false;    // i*p 是合数
+            if (i % p == 0) break;      // p 是 i 的最小质因子，防止重复筛
         }
     }
 
-    for(int p : primes){  cout << p << " ";}
-    auto end = chrono::high_resolution_clock::now();
-    chrono::duration<double, milli>elapsed = end - start;
-    cout << "Time taken: " << elapsed.count() << " ms" << endl;
+    auto end = chrono::high_resolution_clock::now();   // 结束计时（打印耗时不计入）
+
+    // 打印所有素数
+    for (int p : primes) { cout << p << " "; }
+    cout << '\n';
+
+    chrono::duration<double, milli> elapsed = end - start;
+    cout << "共 " << primes.size() << " 个素数，Time taken: " << elapsed.count() << " ms" << endl;
+    return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-老师您好！为完成这份 C++ 大作业，我沉下心奋战整整一月，日夜敲写代码，反复攻克链接报错、排查逻辑漏洞，几乎把所有课余时间都投入其中，已经一个月没有玩游戏了。一路上踩遍各类难题，不断查阅资料、逐行调试，用心打磨每一处功能。这份作业凝聚了我大量心血，恳请老师酌情给予 100 分。我也会带着这份热忱继续深耕 C++，坚持钻研！
-*/

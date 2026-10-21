@@ -115,10 +115,17 @@ public:
         }
         cout << "  编号   型号        数量\n";
         for (size_t i = 0; i < w.size(); i++) {
+            // 用 signed 计算列宽，避免名称过长时 (常量 - size_t) 无符号下溢导致崩溃
+            string idx  = to_string(i);
+            string name = w.itemAt(i);
+            int pad_idx  = 6  - (int)idx.size();   // 编号列右对齐
+            int pad_name = 12 - (int)name.size();  // 名称列填充空格
+            if (pad_idx  < 1) pad_idx  = 1;
+            if (pad_name < 1) pad_name = 1;        // 名称过长时至少留 1 个空格
             cout << "  " << i
-                 << string(6 - to_string(i).size(), ' ')
-                 << w.itemAt(i)
-                 << string(12 - w.itemAt(i).size(), ' ')
+                 << string(pad_idx, ' ')
+                 << name
+                 << string(pad_name, ' ')
                  << w.qtyAt(i) << '\n';
         }
     }
@@ -214,57 +221,3 @@ int main() {
     cout << "库存已保存，再见 :)\n";
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*老师您好，这份 C++ 大作业，耗费了我整整一个月的精力。我日夜敲写代码，反复攻克链接报错、排查逻辑漏洞，几乎把所有课余时间都投入其中，已经一个月没有玩游戏了。一路上踩遍各类难题，不断查阅资料、逐行调试，用心打磨每一处功能。这份作业凝聚了我大量心血，恳请老师酌情给予 100 分。我也会带着这份热忱继续深耕 C++，坚持钻研*/
