@@ -94,9 +94,16 @@ class zoo{
                (___)
 )" ; 
         inline static vector<string> pic = {sheep , dog , cow , cat , chick , bird , wolf};
-        inline static vector<string> names ={"sheep" , "dog" , "cow" , "cat", "chick", "bird", "wolf" };
+        inline static vector<string> names ={"sheep" , "dog" , "cow" , "cat", "chicken", "bird", "wolf" };
         string name = names.at(i);
-        inline static vector<string> paths = {"bark/sheep.mp3","bark/dog.wav","bark/cow.mp3","bark/cat.mp3","bark/chicken.wav","bark/bird.mp3","bark/wolf.mp3"};
+        // 启动时扫描 bark/ 目录按名字匹配叫声文件，不再硬编码文件名，
+        // 这样文件是 .mp3 还是 .wav、有没有换名字都不会失配
+        static vector<string> buildPaths() {
+            vector<string> v;
+            for (const auto& n : names) v.push_back(sound_match("bark", n));
+            return v;
+        }
+        inline static vector<string> paths = buildPaths();
 
     public:
         zoo(int i_ ) : i(i_) {}
@@ -142,33 +149,42 @@ class zoo{
             return "";   // 捕获异常后也必须返回，否则未定义行为
         }
 
-        inline static void add(){
+        // 交互式添加新动物：返回新动物在 names/pic/paths 中的下标；未加入返回 -1
+        inline static int add(){
             system("cls");
             string new_name;
             cout<<string(10 , '=')<<'\n';
-            cout<<"WHat is it?\n>";
+            cout<<"What is it?\n>";
             while(!(cin>>new_name)){
+                if (cin.eof()) return -1;
                 cin.clear();
                 cin.ignore(numeric_limits<streamsize>::max(),'\n');
                 system("cls");
                 cout <<string(10 , '=')<<'\n';
                 cout <<"That is not a name!\n";
-                cout <<"WHat is it?\n>";
+                cout <<"What is it?\n>";
             }
+            cin.ignore(numeric_limits<streamsize>::max(),'\n');   // 清掉行尾残留
             string address = sound_match("bark" , new_name);
             cout<<"OH,it's " + new_name + " ,I like it!\n";
-            if(address.empty()){cout<<"It's a pity, it can't make a sound..\n";
-            }else{paths.push_back(address);
+            if(address.empty()){
+                cout<<"It's a pity, it can't make a sound..\n";
+                system("pause");
+                system("cls");
+                return -1;
+            }
+            paths.push_back(address);
             names.push_back(new_name);
+            pic.push_back("\n      ???\n   (新朋友 " + new_name + " 还没有画像)\n");
             cout<<"it makes sound like this!\n";
             string cmd = "open \"" + address + "\" alias asound";   // 修正 MCI 命令
             mciTry(cmd.c_str());
             mciTry("play asound");
             Sleep(5000);
             mciTry("stop asound");
-            mciTry("close asound");}
+            mciTry("close asound");
             system("cls");
-    
+            return (int)names.size() - 1;
         }
     };
 
@@ -218,7 +234,13 @@ int main(){
                 Zoo.at(i).bark();
             }
         }else if( key == 'e' || key == 'E'){
-            zoo::add();
+            int idx = zoo::add();
+            if (idx >= 0) {                     // 新动物正式加入动物园，可浏览、可合唱
+                Zoo.push_back(zoo(idx));
+                cout << "新动物已加入动物园！现在共有 " << Zoo.size() << " 只动物\n";
+                system("pause");
+                system("cls");
+            }
         }else if( key == 'd' || key == 'D'){
             if(i<Zoo.size() - 1){
                 i++;

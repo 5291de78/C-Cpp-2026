@@ -36,11 +36,26 @@ public:
     bool load_(const string& filename = "warehouse.txt") {
         ifstream infile(filename);
         if (!infile) return false;
-        string name;
-        unsigned int qty;
-        while (infile >> name >> qty) {  
-            Items.push_back(name);
-            Quantity.push_back(qty);
+        string line;
+        while (getline(infile, line)) {
+            // 行格式：型号 数量。型号允许含空格，数量固定为行尾最后一个字段
+            size_t pos = line.find_last_of(" \t");
+            if (pos == string::npos) continue;                 // 没有数量字段，跳过坏行
+            string name = line.substr(0, pos);
+            string numStr = line.substr(pos + 1);
+            // 数量必须是纯数字且不超范围，否则跳过该行（保护手工改坏的文件）
+            if (name.empty() || numStr.empty()) continue;
+            bool ok = true;
+            for (char ch : numStr) ok = ok && isdigit((unsigned char)ch);
+            if (!ok) continue;
+            try {
+                size_t used = 0;
+                unsigned long long v = stoull(numStr, &used);
+                if (used != numStr.size() ||
+                    v > numeric_limits<unsigned int>::max()) continue;
+                Items.push_back(name);
+                Quantity.push_back((unsigned int)v);
+            } catch (...) { continue; }
         }
         return true;
     }
@@ -51,11 +66,18 @@ public:
             outfile << Items[i] << ' ' << Quantity[i] << '\n';
         return (bool)outfile;
     }
-    bool stock_in_(const string& name, unsigned int num) {
+    // 入库：返回 0 成功；1 数量溢出（拒绝）；2 保存失败
+    int stock_in_(const string& name, unsigned int num) {
         int idx = findIndex(name);
-        if (idx >= 0) Quantity[idx] += num;
-        else { Items.push_back(name); Quantity.push_back(num); }
-        return save_func();
+        if (idx >= 0) {
+            if (num > numeric_limits<unsigned int>::max() - Quantity[idx])
+                return 1;                                   // 入库后总量将超过 unsigned int 上限
+            Quantity[idx] += num;
+        } else {
+            Items.push_back(name);
+            Quantity.push_back(num);
+        }
+        return save_func() ? 0 : 2;
     }
     int stock_out_(const string& name, unsigned int num) {
         int idx = findIndex(name);
@@ -130,23 +152,44 @@ public:
         }
     }
 };
-bool readUInt(const string& prompt, unsigned int& out) {
+string trimStr(const string& s) {
+    size_t b = s.find_first_not_of(" \t\r\n");
+    if (b == string::npos) return "";
+    size_t e = s.find_last_not_of(" \t\r\n");
+    return s.substr(b, e - b + 1);
+}
+
+// 严格读入一个整数：整行读取，拒绝空输入、负号、非数字字符与超范围数值
+// （cin >> unsigned 会把 "-5" 静默转成超大正数，必须避免）
+// 合法范围 [minV, maxV]；读到 EOF 返回 false
+bool readNumber(const string& prompt, long long minV, long long maxV, long long& out) {
+    string line;
     while (true) {
         cout << prompt;
-        if (cin >> out) {
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        if (!getline(cin, line)) return false;
+        string s = trimStr(line);
+        if (s.empty())           { cout << "  ! 输入不能为空\n"; continue; }
+        if (s[0] == '-')         { cout << "  ! 不能输入负数\n"; continue; }
+        bool ok = true;
+        for (char ch : s) if (!isdigit((unsigned char)ch)) { ok = false; break; }
+        if (!ok)                 { cout << "  ! 请输入非负整数\n"; continue; }
+        try {
+            unsigned long long v = stoull(s);
+            if ((long long)v < minV || (long long)v > maxV) {
+                cout << "  ! 超出允许范围（" << minV << " ~ " << maxV << "）\n";
+                continue;
+            }
+            out = (long long)v;
             return true;
-        }
-        if (cin.eof()) return false;
-        cin.clear();                                           
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');    
-        cout << "  ! 输入无效，请输入非负整数\n";
+        } catch (...)            { cout << "  ! 数字太大，超出可表示范围\n"; continue; }
     }
 }
 
 bool readLine(const string& prompt, string& out) {
     cout << prompt;
-    return (bool)getline(cin, out);
+    if (!getline(cin, out)) return false;
+    out = trimStr(out);          // 去掉首尾空白，避免型号带不可见空格导致匹配失败
+    return true;
 }
 warehouse Warehouse;
 screen Screen;
@@ -159,56 +202,54 @@ int main() {
 
     while (true) {
         Screen.menu();
-        unsigned int choice;
-        if (!readUInt("请选择: ", choice)) break;   
+        long long choice;
+        if (!readNumber("请选择: ", 0, 9, choice)) break;
 
         if (choice == 1) {
             system("cls");                          
             Screen.showItems(Warehouse);
         }
-        else if (choice == 2) {                     
-            string name; unsigned int num;
+        else if (choice == 2) {
+            string name; long long num;
             if (!readLine("货品名称: ", name)) break;
-            if (!readUInt("入库数量: ", num)) break;
-            Warehouse.stock_in_(name, num);
+            if (name.empty()) { system("cls"); cout << "  ! 货品名称不能为空\n"; continue; }
+            if (!readNumber("入库数量: ", 1, numeric_limits<unsigned int>::max(), num)) break;
+            int r = Warehouse.stock_in_(name, (unsigned int)num);
             system("cls");
-            cout << "  -> 入库成功，已保存\n";
+            if (r == 0)      cout << "  -> 入库成功，已保存\n";
+            else if (r == 1) cout << "  ! 入库被拒绝：库存总量将超过最大值（溢出）\n";
+            else             cout << "  ! 入库成功但写入文件失败\n";
         }
-        else if (choice == 3) {                    
-            string name; unsigned int num;
+        else if (choice == 3) {
+            string name; long long num;
             if (!readLine("货品名称: ", name)) break;
-            if (!readUInt("出库数量: ", num)) break;
-            int r = Warehouse.stock_out_(name, num);
-            if (r == 0){
-                cout << "  -> 出库成功，已保存\n";
-                system("cls");
-            }      
-            else if (r == 1) {
-                cout << "  ! No matching entries found（无此货品）\n";
-                system("cls");
-            }else{
-                cout << "  ! The quantity to be shipped is greater than the current stock!（库存不足）\n";
-                system("cls");
-            }             
+            if (name.empty()) { system("cls"); cout << "  ! 货品名称不能为空\n"; continue; }
+            if (!readNumber("出库数量: ", 1, numeric_limits<unsigned int>::max(), num)) break;
+            int r = Warehouse.stock_out_(name, (unsigned int)num);
+            system("cls");
+            if (r == 0)      cout << "  -> 出库成功，已保存\n";
+            else if (r == 1) cout << "  ! 无此货品\n";
+            else             cout << "  ! 库存不足，出库被拒绝\n";
         }
         else if (choice == 4) {
-            system("cls");                     
+            system("cls");
             Screen.showItems(Warehouse);
-            unsigned int i;
-            if (!readUInt("要修改的编号: ", i)) break;
-            string name; unsigned int num;
+            long long i;
+            if (!readNumber("要修改的编号: ", 0, numeric_limits<int>::max(), i)) break;
+            string name; long long num;
             if (!readLine("新名称: ", name)) break;
-            if (!readUInt("新数量: ", num)) break;
-            if (Warehouse.revise_(i, name, num)) cout << "  -> 修改成功\n";
-            else cout << "  ! index out of range（编号越界）\n";
+            if (name.empty()) { cout << "  ! 新名称不能为空\n"; continue; }
+            if (!readNumber("新数量: ", 0, numeric_limits<unsigned int>::max(), num)) break;
+            if (Warehouse.revise_((size_t)i, name, (unsigned int)num)) cout << "  -> 修改成功\n";
+            else cout << "  ! 编号越界\n";
         }
         else if (choice == 5) {
-            system("cls");                     
+            system("cls");
             Screen.showItems(Warehouse);
-            unsigned int i;
-            if (!readUInt("要删除的编号: ", i)) break;
-            if (Warehouse.delete_(i)) cout << "  -> 删除成功\n";
-            else cout << "  ! index out of range（编号越界）\n";
+            long long i;
+            if (!readNumber("要删除的编号: ", 0, numeric_limits<int>::max(), i)) break;
+            if (Warehouse.delete_((size_t)i)) cout << "  -> 删除成功\n";
+            else cout << "  ! 编号越界\n";
         }
         else if (choice == 0) {                     
             break;

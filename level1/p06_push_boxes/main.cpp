@@ -61,6 +61,24 @@ int countLeftBoxes() {
     return cnt;
 }
 
+// 统计目的地总数（裸露的 3、被压住的 7、人站上去的 8 都是目的地）
+int countGoals() {
+    int cnt = 0;
+    for (int i = 0; i < MAP_SIZE; i++)
+        for (int j = 0; j < MAP_SIZE; j++)
+            if (map[i][j] == 3 || map[i][j] == 7 || map[i][j] == 8) cnt++;
+    return cnt;
+}
+
+// 统计已归位的箱子数（压在目的地上的 7）
+int countBoxesOnGoal() {
+    int cnt = 0;
+    for (int i = 0; i < MAP_SIZE; i++)
+        for (int j = 0; j < MAP_SIZE; j++)
+            if (map[i][j] == 7) cnt++;
+    return cnt;
+}
+
 // 显示：每格输出一个字符，列严格对齐
 void GamePaint() {
     for (int i = 0; i < MAP_SIZE; i++) {
@@ -151,12 +169,13 @@ int main() {
 
         while (true) {
             GamePaint();
-            cout << "  [W/A/S/D]移动   [R]重开本关   [Q]退出   "
+            cout << "  [方向键/WASD]移动   [R]重开本关   [Q]退出   "
                  << "步数: " << steps
-                 << "   未归位箱子: " << countLeftBoxes() << endl;
+                 << "   归位: " << countBoxesOnGoal() << "/" << countGoals()
+                 << "   未归位: " << countLeftBoxes() << endl;
             if (GameWin()) break;
 
-            char key = getch();          // 读键盘，无需回车
+            int key = getch();           // 读键盘，无需回车；方向键先返回 0 或 224 前缀，再返回方向码
             if (key == 'q' || key == 'Q') {
                 system("cls");
                 cout << "已退出游戏，本关未完成。" << endl;
@@ -170,13 +189,26 @@ int main() {
                 continue;
             }
 
-            bool moved = false;
-            switch (key) {
-                case 'w': case 'W': moved = tryMove(-1, 0); break;
-                case 's': case 'S': moved = tryMove(1, 0);  break;
-                case 'a': case 'A': moved = tryMove(0, -1); break;
-                case 'd': case 'D': moved = tryMove(0, 1);  break;
+            int dr = 0, dc = 0;
+            bool moveKey = true;
+            if (key == 0 || key == 224) {            // 方向键：72/80/75/77 = 上/下/左/右
+                switch (getch()) {
+                    case 72: dr = -1; break;
+                    case 80: dr = 1;  break;
+                    case 75: dc = -1; break;
+                    case 77: dc = 1;  break;
+                    default: moveKey = false;
+                }
+            } else {                                 // WASD 备选操控
+                switch (key) {
+                    case 'w': case 'W': dr = -1; break;
+                    case 's': case 'S': dr = 1;  break;
+                    case 'a': case 'A': dc = -1; break;
+                    case 'd': case 'D': dc = 1;  break;
+                    default: moveKey = false;
+                }
             }
+            bool moved = moveKey && tryMove(dr, dc);
             if (moved) steps++;          // 只有真正移动才计步（撞墙不计步）
             system("cls");
         }
