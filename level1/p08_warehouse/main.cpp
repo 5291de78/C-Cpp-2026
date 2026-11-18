@@ -35,28 +35,52 @@ public:
     unsigned int qtyAt(size_t i) const { return Quantity[i]; }
     bool load_(const string& filename = "warehouse.txt") {
         ifstream infile(filename);
-        if (!infile) return false;
+        if (!infile) return false;                  // 文件不存在（首次运行），不算损坏
         string line;
+        int lineNo = 0, badLines = 0;
         while (getline(infile, line)) {
+            lineNo++;
+            if (lineNo == 1 && line.compare(0, 3, "\xEF\xBB\xBF") == 0)
+                line = line.substr(3);      // 去掉 UTF-8 BOM（记事本手工编辑可能产生）
+            bool bad = false;
             // 行格式：型号 数量。型号允许含空格，数量固定为行尾最后一个字段
             size_t pos = line.find_last_of(" \t");
-            if (pos == string::npos) continue;                 // 没有数量字段，跳过坏行
-            string name = line.substr(0, pos);
-            string numStr = line.substr(pos + 1);
-            // 数量必须是纯数字且不超范围，否则跳过该行（保护手工改坏的文件）
-            if (name.empty() || numStr.empty()) continue;
-            bool ok = true;
-            for (char ch : numStr) ok = ok && isdigit((unsigned char)ch);
-            if (!ok) continue;
-            try {
-                size_t used = 0;
-                unsigned long long v = stoull(numStr, &used);
-                if (used != numStr.size() ||
-                    v > numeric_limits<unsigned int>::max()) continue;
-                Items.push_back(name);
-                Quantity.push_back((unsigned int)v);
-            } catch (...) { continue; }
+            if (pos == string::npos) bad = true;    // 没有数量字段
+            string name, numStr;
+            if (!bad) {
+                name = line.substr(0, pos);
+                numStr = line.substr(pos + 1);
+                if (name.empty() || numStr.empty()) bad = true;
+            }
+            // 数量必须是纯数字且不超范围（保护手工改坏的文件）
+            if (!bad)
+                for (char ch : numStr)
+                    if (!isdigit((unsigned char)ch)) { bad = true; break; }
+            if (!bad) {
+                try {
+                    size_t used = 0;
+                    unsigned long long v = stoull(numStr, &used);
+                    if (used != numStr.size() ||
+                        v > numeric_limits<unsigned int>::max()) bad = true;
+                    else {
+                        Items.push_back(name);
+                        Quantity.push_back((unsigned int)v);
+                    }
+                } catch (...) { bad = true; }
+            }
+            if (bad) {                              // 损坏行必须明确提示，不能静默跳过
+                cout << "  ! 存档损坏：第 " << lineNo << " 行无法解析，已跳过 -> \""
+                     << line << "\"\n";
+                badLines++;
+            }
         }
+        if (infile.bad()) {
+            cout << "  ! 存档损坏：读取 " << filename << " 时发生 I/O 错误\n";
+            badLines++;
+        }
+        if (badLines > 0)
+            cout << "  ! 共 " << badLines << " 行损坏数据未载入，请检查 "
+                 << filename << " 是否被改坏\n";
         return true;
     }
     bool save_func(const string& filename = "warehouse.txt") const {
@@ -79,13 +103,13 @@ public:
         }
         return save_func() ? 0 : 2;
     }
+    // 出库：返回 0 成功；1 无此货品；2 库存不足；3 保存失败
     int stock_out_(const string& name, unsigned int num) {
         int idx = findIndex(name);
         if (idx < 0) return 1;
         if (Quantity[idx] < num) return 2;
         Quantity[idx] -= num;
-        save_func();
-        return 0;
+        return save_func() ? 0 : 3;                 // 出库必须检查保存结果
     }
     bool revise_(size_t i, const string& name, unsigned int num) {
         if (i >= Items.size()) return false;
@@ -197,7 +221,8 @@ screen Screen;
 int main() {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
-    Warehouse.load_();          
+    if (!Warehouse.load_())
+        cout << "  提示：未找到 warehouse.txt，从空仓库开始（首次运行属正常）。\n";
     Screen.greeting();
 
     while (true) {
@@ -229,7 +254,8 @@ int main() {
             system("cls");
             if (r == 0)      cout << "  -> 出库成功，已保存\n";
             else if (r == 1) cout << "  ! 无此货品\n";
-            else             cout << "  ! 库存不足，出库被拒绝\n";
+            else if (r == 2) cout << "  ! 库存不足，出库被拒绝\n";
+            else             cout << "  ! 出库成功但保存失败，请检查 warehouse.txt 是否可写\n";
         }
         else if (choice == 4) {
             system("cls");

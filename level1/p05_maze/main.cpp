@@ -59,7 +59,7 @@ void screen::greetingg(){
     cout<<string(50 , '=')<<string(2 , '\n');
     cout<<"Welcome ! This is a maze game"<<string(2 , '\n');
     cout<<"Rules:"<<'\n';
-    cout<<"1,press W,A,S,D to move as char e\n";
+    cout<<"1,press W,A,S,D or arrow keys to move as char e\n";
     cout<<"2,find $ in limited time to score\n";
     cout<<"3,press E to check the correct route\n";
     cout<<"4,press X to end game and check your final score\n";
@@ -220,12 +220,24 @@ vector<int> bfsPath(const AdjacencyList& g, int start, int goal) {
 }
 
 // 读一个按键：
+// 方向键先返回 0/224 前缀，再返回扫描码（72/80/75/77 = 上/下/左/右），翻译成 WASD 统一处理
 // 输入被重定向时退回 cin，读到文件尾视为按 X 退出
 char readKey() {
     DWORD mode;
     HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
-    if (hIn != INVALID_HANDLE_VALUE && GetConsoleMode(hIn, &mode))
-        return (char)_getch();
+    if (hIn != INVALID_HANDLE_VALUE && GetConsoleMode(hIn, &mode)) {
+        int ch = _getch();
+        if (ch == 0 || ch == 224) {                 // 功能键/方向键：读第二个字节
+            switch (_getch()) {
+                case 72: return 'W';                // ↑
+                case 80: return 'S';                // ↓
+                case 75: return 'A';                // ←
+                case 77: return 'D';                // →
+                default: return 0;                  // 其他功能键忽略
+            }
+        }
+        return (char)ch;
+    }
     char c;
     return (cin.get(c)) ? c : 'X';
 }
@@ -274,17 +286,22 @@ public:
         if (nr < 0 || nr >= R || nc < 0 || nc >= C) return;                 // 越界
         if (!linked(g, g_id(pr, pc, C), g_id(nr, nc, C))) return;           // 有墙
         pr = nr; pc = nc;
-        checkTreasure();
     }
 
-    // 吃到 $：得分 = 剩余秒数 * 难度，把 $ 随机挪到别处
-    void checkTreasure() {
+    // 到达出口($)：得分 = 剩余秒数 * 难度；返回是否到达（C/2 = difficulty+1，难度越高奖励越高）
+    bool checkTreasure() {
         if (pr == tr && pc == tc) {
-            score += leftTime() * (C / 2);   // C = difficulty*2+2，故 C/2 = difficulty+1（难度越高奖励越高）
-            uniform_int_distribution<int> rr(0, R - 1), rc(0, C - 1);
-            do { tr = rr(rng); tc = rc(rng); }
-            while (tr == pr && tc == pc);
+            score += leftTime() * (C / 2);
+            return true;
         }
+        return false;
+    }
+
+    // 把 $ 随机挪到别处（避开玩家当前位置）
+    void relocateTreasure() {
+        uniform_int_distribution<int> rr(0, R - 1), rc(0, C - 1);
+        do { tr = rr(rng); tc = rc(rng); }
+        while (tr == pr && tc == pc);
     }
 
     // 画一帧：showPath=true 时叠加 BFS 正确路线
@@ -359,6 +376,12 @@ int main() {
             continue;
         }
         game.move(key);                      // 9. 移动
+        if (game.checkTreasure()) {          // 10. 到达出口：显示玩家赢得了游戏
+            game.draw(false);                // 画面定格在玩家站上出口的一刻
+            cout << "YOU WIN! 玩家赢得了游戏！\n";
+            readKey();                       // 按任意键继续下一轮
+            game.relocateTreasure();
+        }
     }
     return 0;
 }

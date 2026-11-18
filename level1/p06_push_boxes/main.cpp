@@ -35,7 +35,8 @@ bool validateMap(const string& filename) {
     for (int i = 0; i < MAP_SIZE; i++)
         for (int j = 0; j < MAP_SIZE; j++)
             switch (map[i][j]) {
-                case 5: case 8: players++; break;   // 人 / 人+目的地
+                case 5: players++; break;             // 人
+                case 8: players++; goals++; break;    // 人+目的地：人和目标都计入
                 case 4: boxes++;  break;            // 箱子
                 case 7: boxes++;  goals++; break;   // 箱子+目的地（两者都计入）
                 case 3: goals++;  break;            // 目的地
